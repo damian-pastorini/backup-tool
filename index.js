@@ -12,8 +12,8 @@
  */
 
 const path = require('path');
-const { BackupToolServer } = require('./lib/backup-tool-server');
-const { ConsoleFileLog } = require('./lib/console-file-log');
+const { BackupToolServer } = require('./lib/server/backup-tool-server');
+const { ConsoleFileLog } = require('./lib/server/console-file-log');
 
 process.title = 'Backup Tool';
 

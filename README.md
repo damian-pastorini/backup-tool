@@ -10,7 +10,8 @@ Source files are never modified or deleted. Destination files are only deleted w
 
 | Path | Purpose |
 |---|---|
-| `index.js`, `lib/`, `public/` | The Backup Tool: the web panel (see [Web panel](#web-panel)) and the scheduler that runs inside the same process (see [Scheduler](#scheduler)). |
+| `index.js`, `lib/`, `public/` | The Backup Tool: the web panel (see [Web panel](#web-panel)) and the scheduler that runs inside the same process (see [Scheduler](#scheduler)). `lib/server/`, `lib/scheduler/` and `lib/config/` hold its code, `public/js/` the panel page's code. |
+| `lib/inspect/`, `lib/sync/`, `lib/scripts/`, `lib/common/` | The code of the two scripts below (built-in Node.js modules only). |
 | `scripts/tray.ps1`, `scripts/tray.vbs` | The Windows tray version: runs the Backup Tool without a console window, with a tray icon (see [Tray icon](#tray-icon-windows)). |
 | `scripts/create-shortcut.ps1` | Creates the desktop shortcuts (see [Desktop shortcuts](#desktop-shortcuts-windows)). |
 | `run-inspect-folders.js` | Compares sources with destinations and reports what changed. Copies nothing. Writes sync configs for the changes it finds. |
