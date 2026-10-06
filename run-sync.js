@@ -9,7 +9,8 @@
  * 2. Run: node run-sync.js
  * 3. Optional flags:
  *    - node run-sync.js --dry-run (preview changes without applying)
- *    - node run-sync.js --allow-remove (delete files in dest that don't exist in source)
+ *    - node run-sync.js --allow-remove (folder configs: delete files in dest that don't exist in source, for every
+ *      mapping; without it, only for the mappings with "allowRemove: true")
  *    - node run-sync.js --with-hash (enable hash comparison for same-size files)
  *    - node run-sync.js --config=custom.config.js (use custom folder config file)
  *    - node run-sync.js --config-files=YYYY-MM-DD-HH-MM-SS-sync-config-files.js (use file mapping config)
@@ -38,6 +39,8 @@
  *         "C:\\source\\other.pdf": "Y:\\backup-2\\other.pdf"
  *     }
  * };
+ * For the mappings with "allowRemove: true", the inspection also adds remove: {"X:\\backup-1\\old.pdf": "C:\\source\\old.pdf"},
+ * the copies to delete; each one is deleted only if its source still doesn't exist.
  * Older file lists without "settings" and "files" (only the source to destinations object) still work.
  *
  * STOPPING:
@@ -53,6 +56,7 @@
  *             from: "C:\\source\\activities",
  *             to: ["Y:\\backup-2\\activities"],
  *             enabled: true,
+ *             allowRemove: false,
  *             includeExtensions: [".fit", ".gpx"],
  *             excludeExtensions: [".tmp"],
  *             maxSizeBytes: 0,

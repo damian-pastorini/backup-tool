@@ -27,7 +27,8 @@
  * OUTPUT:
  * - configurations/[TIMESTAMP]-sync.config.js: Config with folders needing sync ({settings, mappings})
  * - configurations/[TIMESTAMP]-sync-config-files.js: Config with individual files to sync
- *   ({settings, files: {source: [destinations]}})
+ *   ({settings, files: {source: [destinations]}}), plus remove: {destination: source} for the mappings with
+ *   "allowRemove: true" whose destinations have copies of deleted source files
  * - logs/inspect-folders-[timestamp].log: Detailed log of all detected changes
  * The generated configs keep the modified time threshold used here, so the sync compares files the same way.
  *

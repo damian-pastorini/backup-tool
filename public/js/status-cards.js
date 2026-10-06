@@ -112,6 +112,12 @@ class StatusCards
                     +' - from the '+config.createdAt+' inspection'
             })
         ];
+        if(0 < config.removals){
+            contents.push(this.dom.h('div', {
+                class: 'warn-text',
+                text: this.formatter.plural(config.removals, 'file', 'files')+' to remove'
+            }));
+        }
         if(syncedBy){
             contents.push(this.dom.h('div', {
                 class: 'ok-text',

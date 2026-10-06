@@ -4,7 +4,7 @@ One-way backup of local folders to other drives, for example an external disk or
 
 Every backup works the same way: an **inspection** compares the sources with their destinations and lists the files that changed, and a **sync** copies only those files.
 
-Source files are never modified or deleted. Destination files are only deleted when you pass `--allow-remove`.
+Source files are never modified or deleted. Destination files are only deleted for the mappings with **Allow remove** turned on (off by default), or when you pass `--allow-remove` to a folder sync.
 
 ## Files
 
@@ -24,7 +24,7 @@ Source files are never modified or deleted. Destination files are only deleted w
 
 - `inspect.config.js`: your settings and folder mappings, the main configuration. Edit it from the web panel or by hand.
 - `sync.config.js` (optional): the default config for `run-sync.js` when no `--config` or `--config-files` is given.
-- `YYYY-MM-DD-HH-MM-SS-sync-config-files.js`: written by each inspection, the exact list of changed files, `{ settings, files: { "source file": ["destination file", ...] } }`. One source can go to several destinations. Older lists, with only the `{ "source file": ... }` part, still work.
+- `YYYY-MM-DD-HH-MM-SS-sync-config-files.js`: written by each inspection, the exact list of changed files, `{ settings, files: { "source file": ["destination file", ...] } }`, plus `remove: { "destination file": "source file" }` when a mapping with **Allow remove** has copies whose source was deleted. One source can go to several destinations. Older lists, with only the `{ "source file": ... }` part, still work.
 - `YYYY-MM-DD-HH-MM-SS-sync.config.js`: written by each inspection, `{ settings, mappings }` with one folder mapping per folder with changes.
 
 Both generated files keep the time tolerance the inspection used (`settings.modifiedTimeThresholdMs`), so a sync of them compares files exactly the same way.
@@ -152,6 +152,8 @@ Saving checks that:
 - no destination is the source folder, inside it, or contains it;
 - the same source isn't already copied to the same destination by another mapping.
 
+**Allow remove** (`allowRemove`, off by default) also deletes, from that mapping's destinations, the copies of files deleted from the source. Like every change, it goes through the inspection first: the inspection lists those copies (`Missing in source` in its log, `remove` in the generated file list), and the sync deletes only the listed copies, and only if their source still doesn't exist. Files skipped by the mapping's filters are never removed. If any source folder or file can't be read during the inspection, it doesn't list removals for that destination, because an unreadable file would look deleted.
+
 Folders that don't exist right now (for example an unplugged disk) are allowed, with a warning. Each save rewrites the whole file in a standard format, so comments or custom formatting in it are not kept. If `configurations/` is a git repository, commit the file there to keep its history.
 
 ### Enabling, disabling and running single mappings
@@ -197,7 +199,7 @@ If a second Backup Tool process is started on another port, only the first one r
 Each job:
 
 1. runs an **inspection** of its mappings (`run-inspect-folders.js --mapping=...`);
-2. only if the inspection found changes, runs a **sync** of the file list the inspection generated (`run-sync.js --config-files=...`). Nothing is ever deleted from the destinations.
+2. only if the inspection found changes, runs a **sync** of the file list the inspection generated (`run-sync.js --config-files=...`). Nothing is deleted from the destinations, except the copies of deleted files for the mappings with **Allow remove** (see [Editing mappings](#editing-mappings)).
 
 Jobs run in parallel; each job's inspection and sync run as their own child processes. A mapping that is still being inspected or synced is never started again by another job, or by the panel, until it finishes: the other job skips it and logs that.
 
@@ -268,7 +270,8 @@ node run-sync.js --config=inspect.config.js
 - For each enabled mapping and each destination, walks the source tree and compares every file with its copy in the destination (see [How files are compared](#how-files-are-compared)). Disabled mappings are skipped.
 - `--mapping=2` (or `--mapping=1,3`) inspects only those mappings, numbered from 1 in the config order, even if they are disabled.
 - Skips any source or destination root that does not exist, and prints `Origin not found` or `Destination not found`. To fill a brand-new destination, use the folder-mode sync instead.
-- Prints the folders that have changes, with their counts of new and modified files.
+- For the mappings with `allowRemove: true`, also lists the destination files whose source no longer exists (respecting the filters).
+- Prints the folders that have changes, with their counts of new, modified and to-remove files.
 - If anything changed, writes both configs to `configurations/`.
 - Always writes `logs/inspect-folders-<timestamp>.log`.
 
@@ -279,10 +282,10 @@ node run-sync.js --config=inspect.config.js
 | `--dry-run` | Shows and logs what would be copied or removed, without changing anything. |
 | `--config=<file>` | Folder mode with the given config. Any file with a `mappings` array works, including `inspect.config.js`. Disabled mappings are skipped. |
 | `--mapping=<numbers>` | Folder mode only: syncs only those mappings (`--mapping=2` or `--mapping=1,3`, numbered from 1 in the config order), even if they are disabled. |
-| `--config-files=<file>` | File mode: syncs only the files listed in the given file. |
+| `--config-files=<file>` | File mode: syncs only the files listed in the given file, and deletes the copies in its `remove` list whose source still doesn't exist. |
 | `--with-hash` | When the size matches but the source is newer, compares MD5 hashes before copying. |
 | `--modified-time-threshold=<time>` | How much newer the source must be to count as changed (see [How files are compared](#how-files-are-compared)). In milliseconds (`2000`) or with a unit (`2s`, `500ms`). Overrides `settings.modifiedTimeThresholdMs` from the config. The inspect script takes it too. |
-| `--allow-remove` | Folder mode only: deletes destination files that no longer exist in the source, respecting the filters. It has no effect in file mode. |
+| `--allow-remove` | Folder mode only: deletes destination files that no longer exist in the source, respecting the filters, for every mapping of the run (without it, only for the mappings with `allowRemove: true`). It is skipped for a destination when a source folder or file could not be read. It has no effect in file mode. |
 
 When no config option is given, the script picks its config like this:
 
@@ -347,6 +350,7 @@ module.exports = {
             from: 'C:\\source\\documents',
             to: ['X:\\backup-1\\documents', 'Y:\\backup-2\\documents'],
             enabled: true,                       // false skips it in full inspections, syncs and schedules (default true)
+            allowRemove: false,                  // true also deletes the copies of files deleted from the source (default false)
             schedule: {                          // optional, off by default
                 enabled: true,
                 cron: ''                         // empty = the general schedule
@@ -372,7 +376,7 @@ The name of `logs/sync-YYYYMMDD-HHMMSS.log` uses local time. The `Timestamp:` li
 - `HASH ERRORS`
 - `ALREADY SYNCED FILES`, one `OK | name | src -> dst` line per file.
 - `UPDATED FILES`, one `SYNC | name | src -> dst` line per file. In a dry run, these are the files that would be copied.
-- `REMOVED FILES`, one `RM | name | path` line per file.
+- `REMOVED FILES`, one `RM | name | path` line per file. In a dry run, these are the files that would be removed.
 - `ERRORS`
 
 The **Last backup** card and the **History** table in the web panel show the latest synced files. Without the panel, open the newest `sync-*.log` whose header says `Dry Run: NO`, and read its `UPDATED FILES` section.

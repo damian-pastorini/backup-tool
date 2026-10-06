@@ -16,6 +16,7 @@ class MappingEditor
             from: '',
             to: [{path: ''}],
             enabled: true,
+            allowRemove: false,
             schedule: {enabled: false, cron: ''},
             includeExtensions: [],
             excludeExtensions: ['.tmp', '.log'],
@@ -63,6 +64,15 @@ class MappingEditor
             this.dom.h('label', {class: 'check'}, [
                 this.dom.h('input', {type: 'checkbox', id: 'mapping-enabled', checked: false !== mapping.enabled}),
                 'Enabled (disabled mappings are skipped by full inspections, syncs and schedules)'
+            ]),
+            this.dom.h('label', {class: 'check'}, [
+                this.dom.h('input', {
+                    type: 'checkbox',
+                    id: 'mapping-allow-remove',
+                    checked: true === mapping.allowRemove
+                }),
+                'Allow remove: delete the files of the destinations whose source file was deleted'
+                +' (the inspection lists them first, the sync removes only those)'
             ]),
             this.buildScheduleFields(mapping.schedule || {enabled: false, cron: ''}),
             this.dom.h('label', {class: 'check'}, [
@@ -231,6 +241,7 @@ class MappingEditor
             excludeHidden: this.dom.byId('mapping-hidden').checked,
             excludeSystem: this.dom.byId('mapping-system').checked,
             enabled: this.dom.byId('mapping-enabled').checked,
+            allowRemove: this.dom.byId('mapping-allow-remove').checked,
             schedule: {
                 enabled: this.dom.byId('mapping-schedule-enabled').checked,
                 cron: this.dom.byId('mapping-schedule-cron').value

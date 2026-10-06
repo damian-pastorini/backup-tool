@@ -10,6 +10,7 @@
  * settings.schedule: the general schedule (a cron expression), used by the scheduled mappings without a cron of their own.
  * settings.logs: removes logs older than keepDays; set removeOldLogs to false to keep every log.
  * enabled: false keeps a mapping in the file but skips it in full inspections, syncs and schedules.
+ * allowRemove: true also deletes, from the destinations, the copies of files deleted from the source (off by default).
  * schedule: when enabled, the scheduler inspects the mapping and syncs it when something changed, with its own cron or,
  * if it's empty, the general one.
  */
@@ -31,6 +32,7 @@ module.exports = {
             from: 'C:\\source\\documents',
             to: ['X:\\backup-1\\documents', 'Y:\\backup-2\\documents'],
             enabled: true,
+            allowRemove: false,
             schedule: {
                 enabled: true,
                 cron: ''
@@ -46,6 +48,7 @@ module.exports = {
             from: 'C:\\source\\photos',
             to: ['Y:\\backup-2\\photos'],
             enabled: true,
+            allowRemove: false,
             schedule: {
                 enabled: true,
                 cron: '0 */6 * * *'

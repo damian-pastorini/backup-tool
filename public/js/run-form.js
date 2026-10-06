@@ -43,7 +43,8 @@ class RunForm
             return 'sync.config.js - default config ('+this.formatter.plural(config.entries, 'folder', 'folders')+')';
         }
         if('files' === config.type){
-            return config.createdAt+' - '+this.formatter.plural(config.destinations, 'file copy', 'file copies');
+            return config.createdAt+' - '+this.formatter.plural(config.destinations, 'file copy', 'file copies')
+                +(0 < config.removals ? ', '+this.formatter.number(config.removals)+' to remove' : '');
         }
         return config.createdAt+' - '+this.formatter.plural(config.entries, 'folder', 'folders');
     }
@@ -132,7 +133,9 @@ class RunForm
             this.startJob(params);
             return;
         }
-        let message = params.allowRemove ? 'Click again to copy AND delete' : 'Click again to copy';
+        let config = this.findConfig(params.config);
+        let isRemoving = params.allowRemove || (config && 0 < config.removals);
+        let message = isRemoving ? 'Click again to copy AND delete' : 'Click again to copy';
         this.confirmation.confirmClick(button, message, () => {
             this.startJob(params);
         });

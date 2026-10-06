@@ -23,6 +23,7 @@ class ConfigsTable
         for(let config of this.panelStatus.data.configs){
             let entries = 'files' === config.type
                 ? this.formatter.plural(config.destinations, 'copy', 'copies')
+                    +(0 < config.removals ? ', '+this.formatter.number(config.removals)+' to remove' : '')
                 : this.formatter.plural(config.entries, 'folder', 'folders');
             rows.push(this.dom.h('tr', {class: config.generated ? '' : 'highlight'}, [
                 this.dom.h('td', {text: config.generated ? config.createdAt : 'main config'}),

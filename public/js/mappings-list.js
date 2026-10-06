@@ -55,7 +55,8 @@ class MappingsList
                 ]),
                 mapping.enabled
                     ? ''
-                    : this.dom.pill('disabled: skipped by full inspections, syncs and schedules', 'muted')
+                    : this.dom.pill('disabled: skipped by full inspections, syncs and schedules', 'muted'),
+                mapping.allowRemove ? this.dom.pill('allow remove: deletes copies of deleted files', 'warn') : ''
             ]),
             this.renderMappingSchedule(index, mapping),
             this.renderPath(mapping.from, mapping.fromExists),

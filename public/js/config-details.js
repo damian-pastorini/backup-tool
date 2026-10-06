@@ -39,6 +39,12 @@ class ConfigDetails
                 this.dom.h('pre', {text: 'From: '+folder.source+'\n\n'+folder.files.join('\n')})
             ]));
         }
+        if(0 < config.removals.length){
+            children.push(this.dom.h('details', {open: config.removals.length < 50}, [
+                this.dom.h('summary', {text: 'Files to remove ('+this.formatter.number(config.removals.length)+')'}),
+                this.dom.h('pre', {text: config.removals.join('\n')})
+            ]));
+        }
         if(0 < config.mappings.length){
             let lines = [];
             for(let mapping of config.mappings){
@@ -58,7 +64,10 @@ class ConfigDetails
         if('files' === config.type){
             return this.formatter.plural(config.destinations, 'file copy', 'file copies')
                 +' from '+this.formatter.plural(config.entries, 'source file', 'source files')
-                +' in '+this.formatter.plural(config.folders.length, 'destination folder', 'destination folders');
+                +' in '+this.formatter.plural(config.folders.length, 'destination folder', 'destination folders')
+                +(0 < config.removals.length
+                    ? ', and '+this.formatter.plural(config.removals.length, 'file', 'files')+' to remove'
+                    : '');
         }
         return this.formatter.plural(config.entries, 'folder mapping', 'folder mappings')
             +' to '+this.formatter.plural(config.destinations, 'destination', 'destinations');
