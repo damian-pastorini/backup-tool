@@ -1,0 +1,13 @@
+node_modules/
+.playwright-mcp/
+.claude/
+
+# Local configuration, with your own folder paths. It lives in "configurations", which is its own private
+# repository (inspect.config.dist.js is the example to copy there):
+configurations/
+inspect.config.js
+sync.config.js
+sync-config-files.js
+
+# Generated on every run, and they list personal file names and paths:
+logs/

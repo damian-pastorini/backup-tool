@@ -1,0 +1,24 @@
+{
+    "name": "backup-tool",
+    "version": "1.0.0",
+    "description": "One-way backup sync of local folders to other drives, with scheduled runs and a local web panel.",
+    "private": true,
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "open": "node index.js --open",
+        "scheduler": "node run-scheduler.js",
+        "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
+        "inspect": "node run-inspect-folders.js",
+        "sync": "node run-sync.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/damian-pastorini/backup-tool.git"
+    },
+    "author": "Damian Pastorini <damian.pastorini@gmail.com>",
+    "license": "UNLICENSED",
+    "dependencies": {
+        "@reldens/server-utils": "^0.62.0"
+    }
+}

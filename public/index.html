@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Backup Tool</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top-bar">
+    <div class="brand">
+        <img src="favicon.svg" alt="" width="28" height="28">
+        <h1>Backup Tool</h1>
+    </div>
+    <div class="top-actions">
+        <span id="job-pill" class="pill muted">Idle</span>
+        <button type="button" id="refresh" class="ghost">Refresh</button>
+    </div>
+</header>
+
+<main>
+    <div id="error" class="error-banner" hidden></div>
+
+    <section class="cards" aria-label="Status">
+        <article class="card" id="card-sync"></article>
+        <article class="card" id="card-inspect"></article>
+        <article class="card" id="card-pending"></article>
+        <article class="card" id="card-mappings"></article>
+        <article class="card" id="card-scheduler"></article>
+    </section>
+
+    <section class="panel" id="run-panel">
+        <h2>Run</h2>
+        <div class="run-grid">
+            <div class="run-box">
+                <h3><span class="step">1</span> Inspect</h3>
+                <p class="muted">Compares every source with its destinations and creates a sync config with the files that changed. Nothing is copied.</p>
+                <label class="check"><input type="checkbox" id="inspect-hash"> Compare hashes when only the date changed (slow, downloads Google Drive files)</label>
+                <div class="buttons">
+                    <button type="button" id="run-inspect" class="primary">Run inspection</button>
+                </div>
+            </div>
+            <div class="run-box">
+                <h3><span class="step">2</span> Sync</h3>
+                <label class="field">
+                    <span>Config</span>
+                    <select id="sync-config"></select>
+                </label>
+                <label class="check"><input type="checkbox" id="sync-dry" checked> Dry run: only show what would be copied</label>
+                <label class="check"><input type="checkbox" id="sync-hash"> Compare hashes when only the date changed</label>
+                <label class="check"><input type="checkbox" id="sync-remove"> Delete destination files missing in the source (folder configs only)</label>
+                <div class="buttons">
+                    <button type="button" id="run-sync" class="primary">Preview sync</button>
+                    <button type="button" id="view-sync-config" class="ghost">View config</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="job" class="job" hidden>
+            <div class="job-head">
+                <div>
+                    <strong id="job-label"></strong>
+                    <div class="job-meta"><code id="job-command"></code> <span id="job-state"></span></div>
+                </div>
+                <button type="button" id="stop-job" class="danger" hidden>Stop</button>
+            </div>
+            <pre id="job-output" class="console"><span id="job-lines"></span><span id="job-current" class="current-line"></span></pre>
+            <div id="job-files" class="job-files"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Mappings <code class="muted">configurations/inspect.config.js</code></h2>
+            <button type="button" id="add-mapping" class="primary small">Add mapping</button>
+        </div>
+        <div class="settings-block">
+            <div class="settings-line">
+                <label for="setting-threshold"><strong>Time tolerance</strong></label>
+                <input type="number" id="setting-threshold" min="0" max="3600" step="any" aria-describedby="setting-threshold-help">
+                <span>seconds</span>
+                <span id="setting-threshold-help" class="muted help">A same-size file only counts as changed when its source is newer by more than this. Use 2 for FAT32/exFAT disks, 0 for an exact match.</span>
+            </div>
+            <div class="settings-line">
+                <label class="check"><input type="checkbox" id="setting-schedule-enabled"> <strong>General schedule</strong></label>
+                <input type="text" id="setting-schedule-cron" class="cron-input" spellcheck="false" placeholder="0 3 * * *" aria-label="General schedule cron expression">
+                <button type="button" id="setting-schedule-edit" class="small">Edit schedule...</button>
+                <span id="setting-schedule-preview" class="muted help"></span>
+            </div>
+            <div class="settings-line">
+                <label class="check"><input type="checkbox" id="setting-logs-remove"> <strong>Remove old logs</strong></label>
+                <span>older than</span>
+                <input type="number" id="setting-logs-days" min="1" max="3650" step="1" aria-label="Days to keep the logs">
+                <span>days</span>
+            </div>
+            <div class="buttons">
+                <button type="button" id="save-settings" class="small primary">Save settings</button>
+            </div>
+            <p class="muted help">The general schedule runs every mapping whose own schedule is on but has no cron of its own. Schedules only run while the scheduler is running (see the Scheduler card).</p>
+        </div>
+        <div id="mappings-notice" class="notice" hidden></div>
+        <div id="mappings"></div>
+    </section>
+
+    <section class="panel">
+        <h2>History</h2>
+        <div class="table-wrap"><table id="logs-table"></table></div>
+    </section>
+
+    <section class="panel">
+        <h2>Sync configs</h2>
+        <div class="table-wrap"><table id="configs-table"></table></div>
+    </section>
+
+    <footer class="muted" id="footer"></footer>
+</main>
+
+<dialog id="dialog">
+    <div class="dialog-head">
+        <h2 id="dialog-title"></h2>
+        <button type="button" id="dialog-close" class="ghost" aria-label="Close">Close</button>
+    </div>
+    <div id="dialog-body" class="dialog-body"></div>
+</dialog>
+
+<dialog id="picker" class="picker">
+    <div class="dialog-head">
+        <h2>Choose a folder</h2>
+        <button type="button" id="picker-close" class="ghost">Cancel</button>
+    </div>
+    <div class="dialog-body">
+        <div class="picker-bar">
+            <button type="button" id="picker-roots" class="small">Drives</button>
+            <button type="button" id="picker-up" class="small">Up</button>
+            <input type="text" id="picker-path" spellcheck="false" aria-label="Folder path" placeholder="Type or paste a folder path">
+            <button type="button" id="picker-go" class="small">Go</button>
+        </div>
+        <label class="check"><input type="checkbox" id="picker-hidden"> Show hidden and system folders</label>
+        <div id="picker-error" class="danger-text" hidden></div>
+        <div id="picker-list" class="picker-list"></div>
+        <div class="picker-new">
+            <input type="text" id="picker-new-name" placeholder="New folder name" spellcheck="false" aria-label="New folder name">
+            <button type="button" id="picker-new" class="small">Create folder here</button>
+        </div>
+        <div class="buttons">
+            <button type="button" id="picker-select" class="primary">Select this folder</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog id="cron-dialog" class="picker">
+    <div class="dialog-head">
+        <h2>Schedule</h2>
+        <button type="button" id="cron-close" class="ghost">Cancel</button>
+    </div>
+    <div class="dialog-body">
+        <label class="field">
+            <span>Run</span>
+            <select id="cron-mode">
+                <option value="minutes">Every few minutes</option>
+                <option value="hourly">Every hour</option>
+                <option value="daily">Every day</option>
+                <option value="weekly">On some days of the week</option>
+                <option value="monthly">Every month</option>
+                <option value="custom">Custom cron expression</option>
+            </select>
+        </label>
+        <div id="cron-fields" class="cron-fields"></div>
+        <label class="field">
+            <span>Cron expression <span class="muted">(minute hour day-of-month month day-of-week)</span></span>
+            <input type="text" id="cron-expression" spellcheck="false" placeholder="0 3 * * *">
+        </label>
+        <div id="cron-preview" class="notice"></div>
+        <div class="buttons">
+            <button type="button" id="cron-use" class="primary">Use this schedule</button>
+            <button type="button" id="cron-clear" class="ghost">Clear</button>
+        </div>
+    </div>
+</dialog>
+
+<noscript>This tool needs JavaScript.</noscript>
+<script src="app.js"></script>
+</body>
+</html>
