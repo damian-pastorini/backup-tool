@@ -660,9 +660,12 @@ class BackupToolClient
             }
         }
         if(!scheduler.isRunning){
-            contents.push(this.h('div', {class: 'big', text: 'Not running'}));
-            contents.push(this.h('div', {class: 'muted', text: 'Start it with "npm run scheduler", or at login with "npm run shortcut -- -Startup".'}));
-            state = 0 < schedule.jobs.length ? 'danger' : '';
+            let reason = scheduler.state && scheduler.state.lockError
+                ? scheduler.state.lockError
+                : 'The schedules stopped, restart the Backup Tool to run them again.';
+            contents.push(this.h('div', {class: 'big', text: 'Not running here'}));
+            contents.push(this.h('div', {class: 'muted', text: reason}));
+            state = 0 < schedule.jobs.length ? 'warn' : '';
         }
         let nextJob = schedule.jobs.filter((job) => {
             return '' !== job.nextRunAt;

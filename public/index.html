@@ -97,7 +97,7 @@
             <div class="buttons">
                 <button type="button" id="save-settings" class="small primary">Save settings</button>
             </div>
-            <p class="muted help">The general schedule runs every mapping whose own schedule is on but has no cron of its own. Schedules only run while the scheduler is running (see the Scheduler card).</p>
+            <p class="muted help">The general schedule runs every mapping whose own schedule is on but has no cron of its own. Schedules run inside this app's process, so they run while its console window is open; changes apply within a minute, without a restart.</p>
         </div>
         <div id="mappings-notice" class="notice" hidden></div>
         <div id="mappings"></div>

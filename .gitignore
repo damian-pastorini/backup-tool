@@ -1,6 +1,7 @@
 node_modules/
 .playwright-mcp/
 .claude/
+.idea/
 
 # Local configuration, with your own folder paths. It lives in "configurations", which is its own private
 # repository (inspect.config.dist.js is the example to copy there):

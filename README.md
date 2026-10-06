@@ -1,6 +1,6 @@
 # Backup Tool
 
-One-way backup of local folders to other drives, for example an external disk or a Google Drive for desktop folder. It's written in Node.js. A scheduler runs the backups on cron schedules, and a small local web panel manages the configuration, runs backups by hand and shows their status.
+One-way backup of local folders to other drives, for example an external disk or a Google Drive for desktop folder. It's written in Node.js. One process (`node .`) serves a small local web panel, which manages the configuration, runs backups by hand and shows their status, and runs the scheduled backups on cron schedules.
 
 Every backup works the same way: an **inspection** compares the sources with their destinations and lists the files that changed, and a **sync** copies only those files.
 
@@ -10,9 +10,9 @@ Source files are never modified or deleted. Destination files are only deleted w
 
 | Path | Purpose |
 |---|---|
-| `index.js`, `lib/`, `public/` | The web panel (see [Web panel](#web-panel)). |
-| `run-scheduler.js` | The scheduler, a separate process that runs the scheduled backups (see [Scheduler](#scheduler)). |
-| `scripts/create-shortcut.ps1` | Creates the desktop shortcut for the web panel, and optionally a startup shortcut for the scheduler. |
+| `index.js`, `lib/`, `public/` | The Backup Tool: the web panel (see [Web panel](#web-panel)) and the scheduler that runs inside the same process (see [Scheduler](#scheduler)). |
+| `scripts/tray.ps1`, `scripts/tray.vbs` | The Windows tray version: runs the Backup Tool without a console window, with a tray icon (see [Tray icon](#tray-icon-windows)). |
+| `scripts/create-shortcut.ps1` | Creates the desktop shortcuts (see [Desktop shortcuts](#desktop-shortcuts-windows)). |
 | `run-inspect-folders.js` | Compares sources with destinations and reports what changed. Copies nothing. Writes sync configs for the changes it finds. |
 | `run-sync.js` | Copies new and changed files from the sources to the destinations. |
 | `inspect.config.dist.js` | Example settings and mappings config, to copy as `configurations/inspect.config.js`. |
@@ -32,7 +32,7 @@ Only the application is committed here. `configurations/` and `logs/` are listed
 
 ## Requirements
 
-- **Windows 10 or 11.** The desktop and startup shortcuts are Windows-only. The scripts and the web panel also run anywhere Node.js does.
+- **Windows 10 or 11** for the tray icon and the desktop shortcuts. The Backup Tool itself (`node .`), the scripts and the web panel run anywhere Node.js does.
 - **Node.js 22.12 or newer**, which includes npm. One of the web panel's dependencies (`sanitize-html`) needs it. Check with `node --version`.
 - **Git**, to download and update the app. Without it, download the ZIP from GitHub instead.
 - Read access to the source folders and write access to the backup destinations.
@@ -57,19 +57,13 @@ Only the application is committed here. `configurations/` and `logs/` are listed
    - start the web panel (next step) and use **Add mapping**;
    - copy `inspect.config.dist.js` to `configurations/inspect.config.js` and replace the example paths with your own source and backup folders (see [Mapping options](#mapping-options));
    - if you keep your configuration in its own private repository, clone it as the `configurations` folder: `git clone <your-configuration-repository-url> configurations`.
-5. Start the web panel and open <http://localhost:9977>:
+5. Start the Backup Tool and open <http://localhost:9977>. The same process runs the scheduled backups, so keep it running:
 
    ```powershell
    node .
    ```
 
-6. For scheduled backups, start the scheduler and keep it running (see [Scheduler](#scheduler)):
-
-   ```powershell
-   npm run scheduler
-   ```
-
-7. Optional: create the desktop shortcut for the panel with `npm run shortcut`, and start the scheduler at every login with `npm run shortcut -- -Startup` (see [Desktop shortcut](#desktop-shortcut)).
+6. Optional, on Windows: create a desktop shortcut (see [Desktop shortcuts](#desktop-shortcuts-windows)).
 
 Each source folder is scanned recursively, so new subfolders are picked up without changing the config.
 
@@ -82,7 +76,7 @@ git pull
 npm install
 ```
 
-Then restart the web panel and the scheduler: close their console windows and start them again.
+Then restart the Backup Tool: close its console window (or use **Exit** on its tray icon) and start it again. Only app updates need a restart; configuration and schedule changes never do.
 
 ## Web panel
 
@@ -93,13 +87,48 @@ node . --open     # also opens it in the default browser (or: npm run open)
 
 Open <http://localhost:9977> and bookmark it. The port is unusual on purpose, so it doesn't clash with other local development servers.
 
-### Desktop shortcut
+There are two ways to run the Backup Tool. Both run the same app (panel and schedules), so only one runs at a time: starting it again while it runs only opens the panel.
 
-`npm run shortcut` creates a **Backup Tool** shortcut on the Windows desktop. It runs `node index.js --open` in a minimized console window and opens the panel in your default browser. If the panel is already running, clicking the shortcut again only opens the browser.
+- **Console version, any OS:** `node .` in a terminal, or the console desktop shortcut on Windows.
+- **Tray version, Windows only:** no console window, a tray icon instead (see [Tray icon](#tray-icon-windows)).
 
-The console window shows every run as it happens: a `STARTED` line, the script's own output and a `FINISHED` line with its exit code. Its title (visible when you hover the taskbar button) says `RUNNING` while a sync or an inspection is in progress, and `idle` otherwise. Closing the console window stops the panel and cancels a running sync or inspection; the script still saves its log, marked `Status: INTERRUPTED`. Closing the browser tab doesn't stop anything.
+### Console window
 
-To start the **scheduler** automatically at every Windows login, run `npm run shortcut -- -Startup`. That adds a **Backup Tool Scheduler** shortcut to the Windows Startup folder, which runs `node run-scheduler.js` in a minimized console window. Double-click it there to start the scheduler right away, and delete it from there (`Win+R`, then `shell:startup`) to undo. The panel doesn't need to run for the schedules to work.
+The console window shows every run as it happens: panel runs get a `STARTED` line, the script's own output and a `FINISHED` line with its exit code; scheduled runs are logged with the time and the job name. Its title (visible when you hover the taskbar button) says `RUNNING` while a panel run is in progress, and `idle` otherwise. Closing the console window stops the panel and the schedules, and cancels the running syncs and inspections; their scripts still save their logs, marked `Status: INTERRUPTED`. Closing the browser tab doesn't stop anything.
+
+### Tray icon (Windows)
+
+The tray version starts the Backup Tool without a console window and shows its icon in the Windows notification area (the tray, next to the clock):
+
+- **Double-click** the icon to open the panel.
+- **Right-click** for **Open panel**, **Open logs folder** and **Exit**.
+- The tooltip shows whether a job is running and when the next scheduled run is.
+- **Exit** stops the Backup Tool cleanly: the running inspections and syncs save their logs (marked `Status: INTERRUPTED`) before it closes.
+- If the Backup Tool stops unexpectedly, a Windows notification says so and the menu shows **Restart**.
+- What the console window would show goes to `logs/console-YYYYMMDD.log`.
+- If the Backup Tool is already running (for example `node .` in a terminal), the tray icon controls that process instead of starting a second one, and its **Exit** stops it.
+
+Start it with the tray desktop shortcut, or from a terminal:
+
+```powershell
+wscript scripts\tray.vbs -Open
+```
+
+`tray.vbs` only starts `scripts\tray.ps1` without showing a PowerShell window; `-Open` opens the panel in the browser.
+
+### Desktop shortcuts (Windows)
+
+The shortcuts aren't kept in the project because they contain the full path of the folder where you installed it. Create them on each computer, from the app's folder:
+
+| Command | Creates | Runs |
+|---|---|---|
+| `npm run shortcut` | **Backup Tool** | the tray version, and opens the panel |
+| `npm run shortcut -- -Console` | **Backup Tool (console)** | `node index.js --open` in a minimized console window, and opens the panel |
+
+Run them again after moving the app's folder. To create them by hand instead, make a desktop shortcut with **Start in** set to the app's folder and this target:
+
+- tray version: `C:\Windows\System32\wscript.exe "<app folder>\scripts\tray.vbs" -Open`
+- console version: `"<path to node.exe>" index.js --open` (find the path with `where node`)
 
 ### What the panel shows
 
@@ -154,24 +183,22 @@ The panel serves plain HTTP only. There is no SSL, no HTTPS redirect and no HSTS
 $env:BACKUP_TOOL_PORT = '9988'; $env:BACKUP_TOOL_HOST = '0.0.0.0'; node .
 ```
 
-The panel runs one job of its own at a time. The scheduler runs its jobs separately, so a scheduled job and a job started from the panel can run at the same time. The panel is built on `AppServerFactory` from [`@reldens/server-utils`](https://www.npmjs.com/package/@reldens/server-utils).
+The panel runs one job of its own at a time. Scheduled jobs run alongside it, but a mapping is never run by the panel and a schedule at the same time: the panel refuses to start a run on a mapping a schedule is working on, and a schedule skips a mapping a panel run is working on. The panel is built on `AppServerFactory` from [`@reldens/server-utils`](https://www.npmjs.com/package/@reldens/server-utils).
 
 ## Scheduler
 
-`run-scheduler.js` runs the scheduled backups in its own process. The web panel only edits the configuration; the schedules run whether the panel is open or not, as long as the scheduler runs.
+The scheduled backups run inside the Backup Tool's own process (`node .`), next to the web panel; there is nothing else to start. The panel only edits the configuration, and the schedules run as long as that process runs, whether a browser tab is open or not.
 
-```powershell
-npm run scheduler        # or: node run-scheduler.js
-```
+**Adding or changing schedules never needs a restart:** every minute the scheduler reads `configurations/inspect.config.js` again, so changes made in the panel (or by hand) apply within a minute, and it starts the jobs that are due.
 
-Keep it running, or start it at every login with the startup shortcut (see [Desktop shortcut](#desktop-shortcut)). Only one scheduler can run at a time, a second one stops with a message. Stop it with Ctrl+C or by closing its console window; the inspections and syncs it was running still save their logs, marked `Status: INTERRUPTED`.
+If a second Backup Tool process is started on another port, only the first one runs the schedules; the second one's Scheduler card says so. Ctrl+C, closing the console window or the tray icon's **Exit** stops the schedules; the inspections and syncs that were running still save their logs, marked `Status: INTERRUPTED`.
 
-Every minute it reads `configurations/inspect.config.js` again, so changes made in the panel apply within a minute without a restart, and starts the jobs that are due. Each job:
+Each job:
 
 1. runs an **inspection** of its mappings (`run-inspect-folders.js --mapping=...`);
 2. only if the inspection found changes, runs a **sync** of the file list the inspection generated (`run-sync.js --config-files=...`). Nothing is ever deleted from the destinations.
 
-Jobs run in parallel, as separate processes. A mapping that is still being inspected or synced is never started again by another job until it finishes: the other job skips it and logs that.
+Jobs run in parallel; each job's inspection and sync run as their own child processes. A mapping that is still being inspected or synced is never started again by another job, or by the panel, until it finishes: the other job skips it and logs that.
 
 ### Which mappings run when
 
@@ -205,8 +232,8 @@ Runs that were due while the scheduler wasn't running (PC off, scheduler stopped
 ### Scheduler files
 
 - `logs/scheduler-YYYYMMDD.log`: what the scheduler did, one file per day (jobs started, skipped and finished, and their scripts' output).
-- `logs/scheduler-state.json`: jobs, next runs, running jobs and last results, read by the panel's Scheduler card.
-- `logs/scheduler.lock`: stops a second scheduler from starting.
+- `logs/scheduler-state.json`: the last result of each job, kept across restarts for the panel's Scheduler card.
+- `logs/scheduler.lock`: stops a second Backup Tool process from running the same schedules.
 
 ## Command-line workflow
 
@@ -349,4 +376,4 @@ The name of `logs/sync-YYYYMMDD-HHMMSS.log` uses local time. The `Timestamp:` li
 
 The **Last backup** card and the **History** table in the web panel show the latest synced files. Without the panel, open the newest `sync-*.log` whose header says `Dry Run: NO`, and read its `UPDATED FILES` section.
 
-**Old logs are removed by default.** The scheduler removes `sync-*`, `inspect-folders-*` and `scheduler-*` logs older than `settings.logs.keepDays` (30 days) when it starts and once a day. Set `settings.logs.removeOldLogs` to `false` (the panel's **Remove old logs** checkbox) to keep every log. Other files in `logs/` are never removed.
+**Old logs are removed by default.** The scheduler removes `sync-*`, `inspect-folders-*`, `scheduler-*` and `console-*` logs older than `settings.logs.keepDays` (30 days) when it starts and once a day. Set `settings.logs.removeOldLogs` to `false` (the panel's **Remove old logs** checkbox) to keep every log. Other files in `logs/` are never removed.

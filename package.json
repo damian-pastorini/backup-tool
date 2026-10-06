@@ -7,7 +7,6 @@
     "scripts": {
         "start": "node index.js",
         "open": "node index.js --open",
-        "scheduler": "node run-scheduler.js",
         "shortcut": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-shortcut.ps1",
         "inspect": "node run-inspect-folders.js",
         "sync": "node run-sync.js"

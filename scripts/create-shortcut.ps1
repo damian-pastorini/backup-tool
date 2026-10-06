@@ -1,42 +1,42 @@
 <#
- Backup Tool - shortcuts
+ Backup Tool - desktop shortcuts (Windows only)
 
- Creates the "Backup Tool" desktop shortcut: it starts the web panel in a minimized console window and opens it in
- the default browser (if the panel is already running it only opens the browser). Close that console window to
- stop the panel.
+ Creates a desktop shortcut that starts the Backup Tool (web panel and scheduled backups) and opens the panel in the
+ default browser. If the Backup Tool is already running, the shortcut only opens the panel.
 
- With -Startup it also adds a "Backup Tool Scheduler" shortcut to the Windows Startup folder, which starts the
- scheduler (run-scheduler.js) in a minimized console window at login, so the scheduled backups run without the panel.
+ - Default: "Backup Tool" runs it as a tray icon, without a console window (scripts\tray.vbs and scripts\tray.ps1).
+   Stop it with the tray icon's Exit.
+ - -Console: "Backup Tool (console)" runs "node index.js --open" in a minimized console window, like starting it from
+   a terminal. Stop it by closing that window.
+
+ The shortcuts point to this folder, so they are created on each computer instead of being kept in the project.
 
  USAGE (from the project folder):
  - npm run shortcut
- - npm run shortcut -- -Startup
+ - npm run shortcut -- -Console
 #>
-param([switch]$Startup)
+param([switch]$Console)
 
 $projectPath = Split-Path -Parent $PSScriptRoot
-$node = (Get-Command node -ErrorAction Stop).Source
 $icon = Join-Path $projectPath 'public\backup-tool.ico'
 $shell = New-Object -ComObject WScript.Shell
+$desktop = [Environment]::GetFolderPath('Desktop')
 
-function New-BackupToolShortcut([string]$shortcutPath, [string]$arguments, [string]$description)
-{
-    $shortcut = $shell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath = $node
-    $shortcut.Arguments = $arguments
-    $shortcut.WorkingDirectory = $projectPath
-    $shortcut.IconLocation = $icon
+if($Console){
+    $shortcut = $shell.CreateShortcut((Join-Path $desktop 'Backup Tool (console).lnk'))
+    $shortcut.TargetPath = (Get-Command node -ErrorAction Stop).Source
+    $shortcut.Arguments = 'index.js --open'
     # 7 = minimized window
     $shortcut.WindowStyle = 7
-    $shortcut.Description = $description
-    $shortcut.Save()
-    Write-Output ('Created: '+$shortcutPath)
+    $shortcut.Description = 'Start the Backup Tool in a console window and open its panel in the browser'
 }
-
-$desktop = [Environment]::GetFolderPath('Desktop')
-New-BackupToolShortcut (Join-Path $desktop 'Backup Tool.lnk') 'index.js --open' 'Start the Backup Tool panel and open it in the browser'
-
-if($Startup){
-    $startupFolder = [Environment]::GetFolderPath('Startup')
-    New-BackupToolShortcut (Join-Path $startupFolder 'Backup Tool Scheduler.lnk') 'run-scheduler.js' 'Start the Backup Tool scheduler at login'
+if(-not $Console){
+    $shortcut = $shell.CreateShortcut((Join-Path $desktop 'Backup Tool.lnk'))
+    $shortcut.TargetPath = Join-Path $env:SystemRoot 'System32\wscript.exe'
+    $shortcut.Arguments = '"'+(Join-Path $projectPath 'scripts\tray.vbs')+'" -Open'
+    $shortcut.Description = 'Start the Backup Tool in the tray and open its panel in the browser'
 }
+$shortcut.WorkingDirectory = $projectPath
+$shortcut.IconLocation = $icon
+$shortcut.Save()
+Write-Output ('Created: '+$shortcut.FullName)

@@ -1,17 +1,25 @@
 /**
- * Backup Tool - web panel
+ * Backup Tool - web panel and scheduled backups, in one process
  *
  * USAGE:
- * - node . (or: npm start)
+ * - node . (or: npm start), keep it running: the scheduled backups run inside this process
  * - Open http://localhost:9977
- * - node . --open: also opens the panel in the default browser (used by the desktop shortcut).
+ * - node . --open: also opens the panel in the default browser.
  *   If the panel is already running, it only opens the browser.
+ * - node . --log-console: also writes the console output to logs/console-YYYYMMDD.log (used by the tray, which runs
+ *   it without a console window, see scripts/tray.ps1).
  * - Optional environment variables: BACKUP_TOOL_PORT (default 9977), BACKUP_TOOL_HOST (default 127.0.0.1)
  */
 
+const path = require('path');
 const { BackupToolServer } = require('./lib/backup-tool-server');
+const { ConsoleFileLog } = require('./lib/console-file-log');
 
 process.title = 'Backup Tool';
+
+if(-1 !== process.argv.indexOf('--log-console')){
+    new ConsoleFileLog({logsPath: path.join(__dirname, 'logs')}).start();
+}
 
 let server = new BackupToolServer({
     rootPath: __dirname,
